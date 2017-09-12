@@ -5,6 +5,8 @@ from flask_restful import Api
 
 from config import app_configuration
 
+from api.views.user import SignUp
+
 def create_flask_app(environment):
     app = Flask(__name__, instance_relative_config=True, static_folder=None)
     
@@ -29,7 +31,11 @@ def create_flask_app(environment):
     # create endpoints
     api = Api(app)
 
-    
+    api.add_resource(SignUp,
+                     '/api/users/signup',
+                     '/api/users/signup',
+                     endpoint='signup')
+
     # handle default 404 exceptions with a custom response
     @app.errorhandler(404)
     def resource_not_found(error):

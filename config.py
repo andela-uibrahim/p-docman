@@ -15,6 +15,7 @@ class Config(object):
     SQLALCHEMY_TRACK_MODIFICATIONS = True
     PAGE_LIMIT = 10
     DEFAULT_PAGE = 1
+    SECRET_KEY = 'thisisthesecretkey'
 
 app_configuration = {
     'development': Config,
