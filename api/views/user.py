@@ -68,3 +68,96 @@ class SignUp(Resource):
                 response.status_code = 200
                 
                 return response
+
+class Login(Resource):
+
+    # @token_required
+    def post(self):
+
+        if not request.json:
+            return {"message": "Request must be a valid JSON", 
+                    "status": "failed"}, 400
+
+        payload = request.get_json()
+        
+        if payload:
+            keys = ["username", "password"]
+
+            for key in keys:
+                if key not in payload:
+                    return {"message": key + " cannot be null",
+                            "status": "failed"}, 400
+                elif (not validate_type(payload[key], str)):
+                    return {"message": key + " must be a valid string", 
+                            "status": "failed"}, 400
+
+                user = User.query.filter_by(username=payload["username"]).first()                
+                if not user:
+                    return{
+                        "status": "failed",
+                        "error": "username does not exist"}, 400
+
+                valid_password = user.verify_password(payload["password"])   
+                
+                if not valid_password:
+                    return{
+                        "status": "failed",
+                        "message": "Invalid password"}
+                
+                user = user.serialize()
+
+                del user["password"]
+                token = generate_token(user)
+                user = {}
+                user["token"] = token
+
+                response = jsonify(dict(
+                            data=user,
+                            message="User has been successfully Logged In",
+                            status="success"
+                        ))
+                response.status_code = 200
+                
+                return response
+
+
+class FetchAllUsers(Resource):
+
+    @token_required
+    def get(self):
+
+        _page = request.args.get('page')
+        _limit = request.args.get('limit')
+        page = int(_page) or 1
+        limit = int(_limit) or 10
+        search_term = request.args.get('q')
+        _users = User.query.order_by(User.created_at.desc())   
+        _users = _users.paginate(page=page, per_page=limit, error_out=False)
+        users = []
+        
+        for user in _users.items:
+            user = user.serialize()
+            del user["password"]
+            users.append(user)
+
+        previous_url = None
+        next_url = None
+
+        if _users.has_next:
+            next_url = url_for(request.endpoint,
+                               limit=limit,
+                               page=page+1,
+                               _external=True)
+        if _users.has_prev:
+            previous_url = url_for(request.endpoint,
+                                   limit=limit,
+                                   page=page-1,
+                                   _external=True)
+
+        return jsonify(dict(count=(len(users)), data=users,
+                            nextUrl=next_url, previousUrl=previous_url,
+                            currentPage=_users.page, status="success"))
+        
+        response.status_code = 200
+        
+        return response
