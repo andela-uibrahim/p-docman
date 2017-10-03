@@ -6,6 +6,8 @@ from flask_jwt import jwt
 from flask import current_app, g, jsonify, request, url_for
 from flask_restful import Resource
 
+from sqlalchemy import or_
+
 from ..auth import token_required, generate_token
 
 from ..models import db, User, Document
@@ -22,7 +24,8 @@ class SignUp(Resource):
         if not request.json:
             return {"message": "Request must be a valid JSON", 
                     "status": "failed"}, 400
-
+        current_user = g.current_user
+        
         payload = request.get_json()
         
         if payload:
@@ -48,9 +51,16 @@ class SignUp(Resource):
                     "status": "failed",
                     "error": "email already exist"}, 400 
                 
-                payload["password"] = bcrypt.hashpw(payload["password"], bcrypt.gensalt())                
-                user = User(username=payload["username"], email=payload["email"], password=payload["password"],
-                    first_name=payload["first_name"], last_name=payload["last_name"])
+                payload["password"] = bcrypt.hashpw(payload["password"], bcrypt.gensalt())
+
+                if current_user:
+                    if current_user.role == "admin":
+                        user = User(username=payload["username"], email=payload["email"], password=payload["password"],
+                        first_name=payload["first_name"], last_name=payload["last_name"], role=payload["role"]) 
+                else:               
+                    user = User(username=payload["username"], email=payload["email"], password=payload["password"],
+                        first_name=payload["first_name"], last_name=payload["last_name"])
+
                 
                 user.save()
                 user = user.serialize()
@@ -126,12 +136,19 @@ class FetchAllUsers(Resource):
     @token_required
     def get(self):
 
-        _page = request.args.get('page')
-        _limit = request.args.get('limit')
+        _page = request.args.get('page') if request.args.get('page') else 1
+        _limit = request.args.get('limit') if request.args.get('limit') else 10
         page = int(_page) or 1
         limit = int(_limit) or 10
         search_term = request.args.get('q')
-        _users = User.query.order_by(User.created_at.desc())   
+        _users = User.query.order_by(User.created_at.desc())  
+
+        if search_term:
+
+            _users = _users.filter(or_(User.first_name.ilike("%"+search_term+"%"),
+             User.last_name.ilike("%"+search_term+"%"), User.username.ilike("%"+search_term+"%"),
+             User.email.ilike("%"+search_term+"%")))
+
         _users = _users.paginate(page=page, per_page=limit, error_out=False)
         users = []
         
@@ -194,7 +211,7 @@ class SingleUser(Resource):
 
         current_user = g.current_user
 
-        if current_user.user_id is not user.id and current_user.role is not "admin":
+        if current_user.user_id != user.id and current_user.role != "admin":
              return{
                 "status": "failed",
                 "message": "you are not authorized to carry out this operation"
@@ -233,7 +250,7 @@ class SingleUser(Resource):
 
         current_user = g.current_user
 
-        if current_user.user_id is not user.id and current_user.role is not "admin":
+        if current_user.user_id != user.id and current_user.role != "admin":
             return{
                 "status": "failed",
                 "message": "you are not authorized to carry out this operation"

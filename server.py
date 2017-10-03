@@ -7,6 +7,8 @@ from config import app_configuration
 
 from api.views.user import SignUp, Login, FetchAllUsers, SingleUser
 
+from api.views.document import CreateDocument, SingleDocument, UserDocuments
+
 def create_flask_app(environment):
     app = Flask(__name__, instance_relative_config=True, static_folder=None)
     
@@ -28,7 +30,7 @@ def create_flask_app(environment):
     def index():
         return "Welcome to the docman Api"
 
-    # create endpoints
+    # user endpoints
     api = Api(app)
 
     api.add_resource(SignUp,
@@ -51,7 +53,21 @@ def create_flask_app(environment):
                      '/api/users/<int:user_id>',
                      endpoint='single')
 
-                     
+    # document endpoints
+    api.add_resource(CreateDocument,
+                    '/api/documents',
+                     '/api/documents',
+                     endpoint='documents')  
+
+    api.add_resource(SingleDocument,
+                    '/api/documents/<int:document_id>',
+                     '/api/documents/<int:document_id>',
+                     endpoint='singleDocument')
+
+    api.add_resource(UserDocuments,
+                    '/api/users/<int:userId>/documents',
+                     '/api/users/<int:userId>/documents',
+                     endpoint='UserDocuments')          
                      
 
     # handle default 404 exceptions with a custom response
