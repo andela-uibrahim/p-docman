@@ -8,7 +8,7 @@ from flask_restful import Resource
 
 from ..auth import token_required, generate_token
 
-from ..models import User, Document
+from ..models import db, User, Document
 
 from ..helpers import validate_type
 
@@ -161,3 +161,89 @@ class FetchAllUsers(Resource):
         response.status_code = 200
         
         return response
+
+class SingleUser(Resource):
+    
+    @token_required
+    def get(self, user_id):
+        user = User.query.filter_by(id=user_id).first()
+        if not user:
+            return{
+                "status": "failed",
+                "message": "user does not exist"}, 404
+        
+        user = user.serialize()
+        del user["password"]
+
+        response = jsonify(dict(
+                            data=user,
+                            status="success"
+                        ))
+        response.status_code = 200
+        
+        return response
+
+    @token_required
+    def put(self, user_id):
+
+        user = User.query.filter_by(id=user_id).first()
+        if not user:
+            return{
+                "status": "failed",
+                "message": "user does not exist"}, 404
+
+        current_user = g.current_user
+
+        if current_user.user_id is not user.id and current_user.role is not "admin":
+             return{
+                "status": "failed",
+                "message": "you are not authorized to carry out this operation"
+                }, 401
+
+        payload = request.get_json()
+
+        keys = payload.keys()
+        for key in keys:
+            if key not in ["username", "first_name", "last_name", "email", "password"]:
+                keys.remove(key)
+            else:
+                setattr(user, key, payload[key])
+
+        user.save()
+
+        user = user.serialize()
+        del user["password"]
+
+        response = jsonify(dict(
+                            data=user,
+                            status="success"
+                        ))
+        response.status_code = 200
+        
+        return response
+
+    @token_required
+    def delete(self, user_id):
+
+        user = User.query.filter_by(id=user_id).first()
+        if not user:
+            return{
+                "status": "failed",
+                "message": "user does not exist"}, 404
+
+        current_user = g.current_user
+
+        if current_user.user_id is not user.id and current_user.role is not "admin":
+            return{
+                "status": "failed",
+                "message": "you are not authorized to carry out this operation"
+            }, 401
+
+        db.session.delete(user)
+        db.session.commit()
+
+        return {
+                "status": "success",
+                "message": "user account has been successfully deleted"
+            }, 200
+

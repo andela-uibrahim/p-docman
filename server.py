@@ -5,7 +5,7 @@ from flask_restful import Api
 
 from config import app_configuration
 
-from api.views.user import SignUp, Login, FetchAllUsers
+from api.views.user import SignUp, Login, FetchAllUsers, SingleUser
 
 def create_flask_app(environment):
     app = Flask(__name__, instance_relative_config=True, static_folder=None)
@@ -45,6 +45,14 @@ def create_flask_app(environment):
                     '/api/users',
                      '/api/users',
                      endpoint='fetch users')
+    
+    api.add_resource(SingleUser,
+                    '/api/users/<int:user_id>',
+                     '/api/users/<int:user_id>',
+                     endpoint='single')
+
+                     
+                     
 
     # handle default 404 exceptions with a custom response
     @app.errorhandler(404)
